@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EVE Healthcare — Diagnostic Bookings</title>
+<style>
+  :root {
+    --primary: #0f766e;
+    --primary-dark: #0b5a54;
+    --bg: #f4f7f6;
+    --card: #ffffff;
+    --border: #e2e8e6;
+    --text: #1f2937;
+    --muted: #6b7280;
+    --danger: #dc2626;
+    --success: #16a34a;
+    --warning: #d97706;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+  }
+  header {
+    background: var(--primary);
+    color: white;
+    padding: 16px 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  header h1 { margin: 0; font-size: 20px; }
+  header .user-info { font-size: 14px; display: flex; align-items: center; gap: 12px; }
+  header button {
+    background: white;
+    color: var(--primary);
+    border: none;
+    padding: 6px 14px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+  }
+  nav {
+    display: flex;
+    gap: 4px;
+    background: white;
+    border-bottom: 1px solid var(--border);
+    padding: 0 24px;
+  }
+  nav button {
+    background: none;
+    border: none;
+    padding: 14px 18px;
+    font-size: 14px;
+    cursor: pointer;
+    color: var(--muted);
+    border-bottom: 3px solid transparent;
+  }
+  nav button.active {
+    color: var(--primary);
+    border-bottom-color: var(--primary);
+    font-weight: 600;
+  }
+  main { max-width: 960px; margin: 0 auto; padding: 24px; }
+  .tab { display: none; }
+  .tab.active { display: block; }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 18px 20px;
+    margin-bottom: 16px;
+  }
+  .card h3 { margin-top: 0; }
+  .test-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 0;
+    border-top: 1px solid var(--border);
+  }
+  .test-row:first-of-type { border-top: none; }
+  .test-name { font-weight: 600; }
+  .test-price { color: var(--primary); font-weight: 600; }
+  .muted { color: var(--muted); font-size: 13px; }
+  form.inline { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  input, select {
+    padding: 8px 10px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 14px;
+  }
+  button.primary {
+    background: var(--primary);
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 14px;
+  }
+  button.primary:hover { background: var(--primary-dark); }
+  button.secondary {
+    background: white;
+    border: 1px solid var(--border);
+    padding: 7px 14px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+  }
+  button.danger { color: var(--danger); border-color: var(--danger); }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+  .status-badge {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 700;
+  }
+  .status-PENDING { background: #fef3c7; color: var(--warning); }
+  .status-CONFIRMED { background: #dcfce7; color: var(--success); }
+  .status-FAILED { background: #fee2e2; color: var(--danger); }
+  .status-CANCELLED { background: #e5e7eb; color: var(--muted); }
+  .booking-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 12px 0;
+    border-top: 1px solid var(--border);
+  }
+  .booking-row:first-of-type { border-top: none; }
+  .msg { padding: 10px 14px; border-radius: 6px; margin-bottom: 14px; font-size: 14px; }
+  .msg.error { background: #fee2e2; color: var(--danger); }
+  .msg.success { background: #dcfce7; color: var(--success); }
+  .auth-forms { display: flex; gap: 20px; flex-wrap: wrap; }
+  .auth-forms .card { flex: 1; min-width: 260px; }
+  .auth-forms label { display: block; font-size: 13px; margin: 8px 0 4px; }
+  .auth-forms input { width: 100%; }
+  .empty { color: var(--muted); text-align: center; padding: 30px 0; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🩺 EVE Healthcare — Diagnostic Bookings</h1>
+  <div class="user-info" id="userInfo"></div>
+</header>
+
+<nav>
+  <button data-tab="browse" class="active">Browse &amp; Book</button>
+  <button data-tab="bookings">My Bookings</button>
+  <button data-tab="account">Account</button>
+</nav>
+
+<main>
+  <div id="globalMsg"></div>
+
+  <!-- BROWSE & BOOK -->
+  <section id="tab-browse" class="tab active">
+    <h2>Diagnostic Centres</h2>
+    <div id="centresList"><p class="muted">Loading centres…</p></div>
+  </section>
+
+  <!-- MY BOOKINGS -->
+  <section id="tab-bookings" class="tab">
+    <h2>My Bookings</h2>
+    <div id="bookingsList"><p class="muted">Log in to see your bookings.</p></div>
+  </section>
+
+  <!-- ACCOUNT -->
+  <section id="tab-account" class="tab">
+    <h2>Account</h2>
+    <div id="loggedOutView" class="auth-forms">
+      <div class="card">
+        <h3>Sign up</h3>
+        <label>Username</label>
+        <input id="suUsername" type="text" placeholder="jane_doe">
+        <label>Email</label>
+        <input id="suEmail" type="email" placeholder="jane@example.com">
+        <label>Password</label>
+        <input id="suPassword" type="password" placeholder="At least 8 characters">
+        <br><br>
+        <button class="primary" onclick="handleSignup()">Create account</button>
+      </div>
+      <div class="card">
+        <h3>Log in</h3>
+        <label>Username</label>
+        <input id="liUsername" type="text">
+        <label>Password</label>
+        <input id="liPassword" type="password">
+        <br><br>
+        <button class="primary" onclick="handleLogin()">Log in</button>
+      </div>
+    </div>
+    <div id="loggedInView" style="display:none;" class="card">
+      <h3>Signed in as <span id="acctUsername"></span></h3>
+      <p class="muted" id="acctEmail"></p>
+      <button class="secondary danger" onclick="handleLogout()">Log out</button>
+    </div>
+  </section>
+</main>
+
+<script>
+const API = ""; // same-origin: Django serves both this page and /api/*
+
+let state = {
+  access: localStorage.getItem("eve_access") || null,
+  refresh: localStorage.getItem("eve_refresh") || null,
+  user: JSON.parse(localStorage.getItem("eve_user") || "null"),
+};
+
+function showMsg(text, type = "success") {
+  const el = document.getElementById("globalMsg");
+  el.innerHTML = `<div class="msg ${type}">${text}</div>`;
+  setTimeout(() => { el.innerHTML = ""; }, 5000);
+}
+
+function saveAuth(access, refresh, user) {
+  state.access = access; state.refresh = refresh; state.user = user;
+  localStorage.setItem("eve_access", access);
+  localStorage.setItem("eve_refresh", refresh);
+  localStorage.setItem("eve_user", JSON.stringify(user));
+  renderHeader();
+}
+
+function clearAuth() {
+  state.access = null; state.refresh = null; state.user = null;
+  localStorage.removeItem("eve_access");
+  localStorage.removeItem("eve_refresh");
+  localStorage.removeItem("eve_user");
+  renderHeader();
+}
+
+async function api(path, options = {}) {
+  const headers = options.headers || {};
+  headers["Content-Type"] = "application/json";
+  // Guard against a stale/corrupted token ever being sent: a garbage
+  // Authorization header makes JWT auth fail *before* permission checks
+  // run, which would 401 even public endpoints like /api/centres/.
+  if (state.access && state.access !== "null" && state.access !== "undefined") {
+    headers["Authorization"] = "Bearer " + state.access;
+  }
+  const res = await fetch(API + path, { ...options, headers });
+  let data = null;
+  try { data = await res.json(); } catch (e) { /* empty body */ }
+  if (res.status === 401 && state.access) {
+    // The token we had was rejected (expired/invalid) - drop it so the
+    // next request doesn't keep sending the same bad token, and so the
+    // UI correctly falls back to "logged out".
+    clearAuth();
+  }
+  if (!res.ok) {
+    const detail = data && (data.detail || JSON.stringify(data)) || res.statusText;
+    throw new Error(detail);
+  }
+  return data;
+}
+
+// ---------- Auth ----------
+async function handleSignup() {
+  const username = document.getElementById("suUsername").value.trim();
+  const email = document.getElementById("suEmail").value.trim();
+  const password = document.getElementById("suPassword").value;
+  try {
+    const data = await api("/api/auth/signup/", {
+      method: "POST",
+      body: JSON.stringify({ username, email, password }),
+    });
+    saveAuth(data.access, data.refresh, data.user);
+    showMsg("Account created! You're signed in.");
+    switchTab("browse");
+  } catch (err) {
+    showMsg("Signup failed: " + err.message, "error");
+  }
+}
+
+async function handleLogin() {
+  const username = document.getElementById("liUsername").value.trim();
+  const password = document.getElementById("liPassword").value;
+  try {
+    const data = await api("/api/auth/login/", {
+      method: "POST",
+      body: JSON.stringify({ username, password }),
+    });
+    const me = await apiWithToken(data.access, "/api/auth/me/");
+    saveAuth(data.access, data.refresh, me);
+    showMsg("Logged in.");
+    switchTab("browse");
+  } catch (err) {
+    showMsg("Login failed: " + err.message, "error");
+  }
+}
+
+async function apiWithToken(token, path) {
+  const res = await fetch(API + path, { headers: { Authorization: "Bearer " + token } });
+  return res.json();
+}
+
+function handleLogout() {
+  clearAuth();
+  showMsg("Logged out.");
+  switchTab("account");
+}
+
+function renderHeader() {
+  const el = document.getElementById("userInfo");
+  const loggedOut = document.getElementById("loggedOutView");
+  const loggedIn = document.getElementById("loggedInView");
+  if (state.user) {
+    el.innerHTML = `Signed in as <strong>${state.user.username}</strong> &nbsp; <button onclick="handleLogout()">Log out</button>`;
+    loggedOut.style.display = "none";
+    loggedIn.style.display = "block";
+    document.getElementById("acctUsername").textContent = state.user.username;
+    document.getElementById("acctEmail").textContent = state.user.email || "";
+  } else {
+    el.innerHTML = `<span class="muted">Not signed in</span>`;
+    loggedOut.style.display = "flex";
+    loggedIn.style.display = "none";
+  }
+}
+
+// ---------- Tabs ----------
+function switchTab(name) {
+  document.querySelectorAll("nav button").forEach(b => b.classList.toggle("active", b.dataset.tab === name));
+  document.querySelectorAll(".tab").forEach(t => t.classList.toggle("active", t.id === "tab-" + name));
+  if (name === "bookings") loadBookings();
+  if (name === "browse") loadCentres();
+}
+document.querySelectorAll("nav button").forEach(b => b.addEventListener("click", () => switchTab(b.dataset.tab)));
+
+// ---------- Centres & Tests ----------
+async function loadCentres() {
+  const container = document.getElementById("centresList");
+  try {
+    const data = await api("/api/centres/");
+    const centres = data.results || data;
+    if (!centres.length) {
+      container.innerHTML = `<div class="empty">No centres yet. Run <code>python manage.py seed_data</code> to add sample data.</div>`;
+      return;
+    }
+    container.innerHTML = centres.map(centre => `
+      <div class="card">
+        <h3>${centre.name} <span class="muted">— ${centre.location}</span></h3>
+        ${(centre.tests || []).map(test => `
+          <div class="test-row">
+            <div>
+              <div class="test-name">${test.name}</div>
+              <div class="muted">${test.description || ""}</div>
+            </div>
+            <div style="display:flex; align-items:center; gap:10px;">
+              <span class="test-price">₹${test.price}</span>
+              ${state.access ? `
+                <input type="datetime-local" id="dt-${test.id}" min="${minDateTimeLocal()}" value="${defaultDateTimeLocal()}">
+                <button class="primary" onclick="bookTest(${test.id})">Book</button>
+              ` : `<span class="muted">Log in to book</span>`}
+            </div>
+          </div>
+        `).join("") || `<p class="muted">No tests listed for this centre.</p>`}
+      </div>
+    `).join("");
+  } catch (err) {
+    container.innerHTML = `<div class="msg error">Could not load centres: ${err.message}</div>`;
+  }
+}
+
+async function bookTest(testId) {
+  const dtInput = document.getElementById("dt-" + testId);
+  const dt = dtInput.value; // e.g. "2026-09-27T10:00" from <input type="datetime-local">
+  if (!dt) { showMsg("Pick an appointment date/time first.", "error"); return; }
+
+  // Send the picked value as-is (no JS Date/toISOString conversion). Converting
+  // via `new Date(dt).toISOString()` uses the BROWSER/OS timezone, which may not
+  // match the backend's configured TIME_ZONE (Asia/Kolkata) and can silently
+  // shift the time into the past. Sending the plain "YYYY-MM-DDTHH:MM" string
+  // lets Django parse it as a naive datetime and localize it using its own
+  // TIME_ZONE setting instead, which is consistent no matter what timezone the
+  // user's computer is set to.
+  const appointment = dt.length === 16 ? dt + ":00" : dt;
+
+  try {
+    await api("/api/bookings/", {
+      method: "POST",
+      body: JSON.stringify({ diagnostic_test: testId, appointment_datetime: appointment }),
+    });
+    showMsg("Booking created! Check 'My Bookings' to pay.");
+    switchTab("bookings");
+  } catch (err) {
+    showMsg("Booking failed: " + err.message, "error");
+  }
+}
+
+function minDateTimeLocal() {
+  // 10-minute buffer so "now" itself never gets rejected as "in the past"
+  // by the time the request reaches the server.
+  const d = new Date(Date.now() + 10 * 60 * 1000);
+  return formatDateTimeLocal(d);
+}
+
+function defaultDateTimeLocal() {
+  // Pre-fill with a safely-future value (tomorrow at 10:00) so booking
+  // works even if the user only changes the date, or doesn't touch the
+  // field at all - avoids the common mistake of picking today's date
+  // while the time portion is still left at midnight (already past).
+  const d = new Date();
+  d.setDate(d.getDate() + 1);
+  d.setHours(10, 0, 0, 0);
+  return formatDateTimeLocal(d);
+}
+
+function formatDateTimeLocal(d) {
+  const pad = n => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+// ---------- Bookings ----------
+async function loadBookings() {
+  const container = document.getElementById("bookingsList");
+  if (!state.access) {
+    container.innerHTML = `<p class="muted">Log in to see your bookings.</p>`;
+    return;
+  }
+  try {
+    const data = await api("/api/bookings/");
+    const bookings = data.results || data;
+    if (!bookings.length) {
+      container.innerHTML = `<div class="empty">No bookings yet — book a test from the "Browse & Book" tab.</div>`;
+      return;
+    }
+    container.innerHTML = `<div class="card">` + bookings.map(b => `
+      <div class="booking-row">
+        <div>
+          <div class="test-name">${b.diagnostic_test_name} <span class="status-badge status-${b.status}">${b.status}</span></div>
+          <div class="muted">${b.centre_name} · ${new Date(b.appointment_datetime).toLocaleString()} · ₹${b.amount}</div>
+        </div>
+        <div style="display:flex; gap:8px;">
+          ${b.status === "PENDING" ? `<button class="secondary" onclick="payBooking('${b.id}')">Pay now</button>` : ""}
+          ${["PENDING","CONFIRMED"].includes(b.status) ? `<button class="secondary danger" onclick="cancelBooking('${b.id}')">Cancel</button>` : ""}
+        </div>
+      </div>
+    `).join("") + `</div>`;
+  } catch (err) {
+    container.innerHTML = `<div class="msg error">Could not load bookings: ${err.message}</div>`;
+  }
+}
+
+async function payBooking(bookingId) {
+  try {
+    const payment = await api("/api/payments/", {
+      method: "POST",
+      body: JSON.stringify({ booking_id: bookingId }),
+    });
+    showMsg(`Payment ${payment.status}.`, payment.status === "SUCCESS" ? "success" : "error");
+    loadBookings();
+  } catch (err) {
+    showMsg("Payment failed: " + err.message, "error");
+  }
+}
+
+async function cancelBooking(bookingId) {
+  try {
+    await api(`/api/bookings/${bookingId}/cancel/`, { method: "POST" });
+    showMsg("Booking cancelled.");
+    loadBookings();
+  } catch (err) {
+    showMsg("Cancel failed: " + err.message, "error");
+  }
+}
+
+// ---------- Init ----------
+renderHeader();
+loadCentres();
+</script>
+
+</body>
+</html>
